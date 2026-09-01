@@ -1,41 +1,120 @@
 @host = http://localhost:5002
 @baseUrl = {{host}}/api/auth
 
-### Register
+###############################################
+# Test Credentials
+###############################################
+# CLIENT:    client@test.com    / Password123
+# COUNSELOR: counselor@test.com / Password123
+# ADMIN:     admin@test.com     / Password123
+
+###############################################
+# Register Test Users
+###############################################
+
+### Register CLIENT
+# @name registerClient
 POST {{baseUrl}}/register
 Content-Type: application/json
 
 {
-  "email": "test.user@example.com",
+  "email": "client@test.com",
   "password": "Password123",
   "firstName": "Test",
-  "lastName": "User",
-  "phone": "+1234567890"
+  "lastName": "Client",
+  "phone": "+1234567890",
+  "role": "CLIENT"
 }
 
-### Login
-# @name login
+### Register COUNSELOR
+# @name registerCounselor
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+  "email": "counselor@test.com",
+  "password": "Password123",
+  "firstName": "Test",
+  "lastName": "Counselor",
+  "phone": "+1234567891",
+  "role": "COUNSELOR"
+}
+
+### Register ADMIN
+# @name registerAdmin
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+  "email": "admin@test.com",
+  "password": "Password123",
+  "firstName": "Test",
+  "lastName": "Admin",
+  "phone": "+1234567892",
+  "role": "ADMIN"
+}
+
+###############################################
+# Login Test Users
+###############################################
+
+### Login CLIENT
+# @name clientLogin
 POST {{baseUrl}}/login
 Content-Type: application/json
 
 {
-  "email": "test.user@example.com",
+  "email": "client@test.com",
   "password": "Password123"
 }
 
 ###
-@token = {{login.response.body.data.token}}
+@clientToken = {{clientLogin.response.body.data.token}}
 
-### Get current user (Me) with Bearer token
+### Login COUNSELOR
+# @name counselorLogin
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "counselor@test.com",
+  "password": "Password123"
+}
+
+###
+@counselorToken = {{counselorLogin.response.body.data.token}}
+
+### Login ADMIN
+# @name adminLogin
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "admin@test.com",
+  "password": "Password123"
+}
+
+###
+@adminToken = {{adminLogin.response.body.data.token}}
+
+###############################################
+# Current User (Me)
+###############################################
+
+### Get current user (CLIENT)
 GET {{baseUrl}}/me
-Authorization: Bearer {{token}}
+Authorization: Bearer {{clientToken}}
+
+###############################################
+# Auth Error Tests
+###############################################
 
 ### Invalid login (wrong password)
 POST {{baseUrl}}/login
 Content-Type: application/json
 
 {
-  "email": "test.user@example.com",
+  "email": "client@test.com",
   "password": "WrongPassword"
 }
 
@@ -44,7 +123,7 @@ POST {{baseUrl}}/login
 Content-Type: application/json
 
 {
-  "email": "does.not.exist@example.com",
+  "email": "does.not.exist@test.com",
   "password": "Password123"
 }
 
@@ -59,7 +138,7 @@ Authorization: Bearer this.is.not.a.valid.jwt
 GET {{baseUrl}}/me
 Authorization: NotBearer sometoken
 
-### Register validation error (short password)
+### Register validation error (invalid email + short password)
 POST {{baseUrl}}/register
 Content-Type: application/json
 
@@ -69,3 +148,48 @@ Content-Type: application/json
   "firstName": "",
   "lastName": ""
 }
+
+###############################################
+# Role-Based Authorization Tests
+###############################################
+
+### CLIENT -> /api/client/test (expected 200)
+GET {{host}}/api/client/test
+Authorization: Bearer {{clientToken}}
+
+### CLIENT -> /api/counselor/test (expected 403)
+GET {{host}}/api/counselor/test
+Authorization: Bearer {{clientToken}}
+
+### CLIENT -> /api/admin/test (expected 403)
+GET {{host}}/api/admin/test
+Authorization: Bearer {{clientToken}}
+
+### COUNSELOR -> /api/counselor/test (expected 200)
+GET {{host}}/api/counselor/test
+Authorization: Bearer {{counselorToken}}
+
+### COUNSELOR -> /api/admin/test (expected 403)
+GET {{host}}/api/admin/test
+Authorization: Bearer {{counselorToken}}
+
+### ADMIN -> /api/admin/test (expected 200)
+GET {{host}}/api/admin/test
+Authorization: Bearer {{adminToken}}
+
+### ADMIN -> /api/client/test (expected 403)
+GET {{host}}/api/client/test
+Authorization: Bearer {{adminToken}}
+
+### Missing token -> /api/admin/test (expected 401)
+GET {{host}}/api/admin/test
+
+### Invalid token -> /api/admin/test (expected 401)
+GET {{host}}/api/admin/test
+Authorization: Bearer this.is.not.a.valid.jwt
+
+### Missing token -> /api/counselor/test (expected 401)
+GET {{host}}/api/counselor/test
+
+### Missing token -> /api/client/test (expected 401)
+GET {{host}}/api/client/test
