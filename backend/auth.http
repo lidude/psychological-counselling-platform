@@ -1,0 +1,71 @@
+@host = http://localhost:5002
+@baseUrl = {{host}}/api/auth
+
+### Register
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+  "email": "test.user@example.com",
+  "password": "Password123",
+  "firstName": "Test",
+  "lastName": "User",
+  "phone": "+1234567890"
+}
+
+### Login
+# @name login
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "test.user@example.com",
+  "password": "Password123"
+}
+
+###
+@token = {{login.response.body.data.token}}
+
+### Get current user (Me) with Bearer token
+GET {{baseUrl}}/me
+Authorization: Bearer {{token}}
+
+### Invalid login (wrong password)
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "test.user@example.com",
+  "password": "WrongPassword"
+}
+
+### Invalid login (non-existent email)
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "does.not.exist@example.com",
+  "password": "Password123"
+}
+
+### Me with missing token
+GET {{baseUrl}}/me
+
+### Me with invalid token
+GET {{baseUrl}}/me
+Authorization: Bearer this.is.not.a.valid.jwt
+
+### Me with malformed Authorization header
+GET {{baseUrl}}/me
+Authorization: NotBearer sometoken
+
+### Register validation error (short password)
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+  "email": "not-an-email",
+  "password": "123",
+  "firstName": "",
+  "lastName": ""
+}

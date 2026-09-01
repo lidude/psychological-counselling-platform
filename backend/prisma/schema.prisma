@@ -1,0 +1,169 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CLIENT
+  COUNSELOR
+  ADMIN
+}
+
+enum SessionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  password      String
+  firstName     String    @map("first_name")
+  lastName      String    @map("last_name")
+  phone         String?
+  role          UserRole  @default(CLIENT)
+  avatar        String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  counselor     Counselor?
+  client        Client?
+  appointments  Appointment[]
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+
+  @@map("users")
+}
+
+model Counselor {
+  id              Int       @id @default(autoincrement())
+  userId          Int       @unique @map("user_id")
+  specialization  String
+  bio             String?
+  licenseNumber   String?   @map("license_number")
+  hourlyRate      Decimal   @map("hourly_rate")
+  isAvailable     Boolean   @default(true) @map("is_available")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions        Session[]
+  availabilities  CounselorAvailability[]
+  appointments    Appointment[]
+
+  @@map("counselors")
+}
+
+model CounselorAvailability {
+  id          Int      @id @default(autoincrement())
+  counselorId Int      @map("counselor_id")
+  dayOfWeek   Int      @map("day_of_week")
+  startTime   String   @map("start_time")
+  endTime     String   @map("end_time")
+  isAvailable Boolean  @default(true) @map("is_available")
+
+  counselor   Counselor @relation(fields: [counselorId], references: [id], onDelete: Cascade)
+
+  @@unique([counselorId, dayOfWeek, startTime])
+  @@map("counselor_availability")
+}
+
+model Client {
+  id              Int       @id @default(autoincrement())
+  userId          Int       @unique @map("user_id")
+  dateOfBirth     DateTime? @map("date_of_birth")
+  gender          String?
+  emergencyContact String?  @map("emergency_contact")
+  medicalHistory  String?   @map("medical_history")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions        Session[]
+
+  @@map("clients")
+}
+
+model Appointment {
+  id          Int       @id @default(autoincrement())
+  userId      Int       @map("user_id")
+  counselorId Int       @map("counselor_id")
+  date        DateTime
+  startTime   String    @map("start_time")
+  endTime     String    @map("end_time")
+  type        String
+  notes       String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  counselor   Counselor @relation(fields: [counselorId], references: [id], onDelete: Cascade)
+  session     Session?
+
+  @@map("appointments")
+}
+
+model Session {
+  id              Int           @id @default(autoincrement())
+  clientId        Int           @map("client_id")
+  counselorId     Int           @map("counselor_id")
+  appointmentId   Int?          @unique @map("appointment_id")
+  status          SessionStatus @default(SCHEDULED)
+  notes           String?
+  recording       String?
+  startTime       DateTime?     @map("start_time")
+  endTime         DateTime?     @map("end_time")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  client          Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  counselor       Counselor     @relation(fields: [counselorId], references: [id], onDelete: Cascade)
+  appointment     Appointment?  @relation(fields: [appointmentId], references: [id])
+  payment         Payment?
+
+  @@map("sessions")
+}
+
+model Payment {
+  id          Int           @id @default(autoincrement())
+  sessionId   Int           @unique @map("session_id")
+  amount      Decimal
+  currency    String        @default("USD")
+  status      PaymentStatus @default(PENDING)
+  method      String?
+  transactionId String?     @map("transaction_id")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  session     Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model Message {
+  id          Int      @id @default(autoincrement())
+  senderId    Int      @map("sender_id")
+  receiverId  Int      @map("receiver_id")
+  content     String
+  isRead      Boolean  @default(false) @map("is_read")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
