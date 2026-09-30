@@ -1508,3 +1508,34 @@ Content-Type: application/json
 {
   "status": "APPROVED"
 }
+
+###############################################
+# Client Counselor Browsing
+###############################################
+
+### Browse Counselors (CLIENT) - expected 200
+GET {{host}}/api/counselors
+Authorization: Bearer {{clientGmailToken}}
+
+### Browse Counselors (ADMIN) - expected 200
+GET {{host}}/api/counselors
+Authorization: Bearer {{adminGmailToken}}
+
+### Browse Counselors (COUNSELOR) - expected 200
+GET {{host}}/api/counselors
+Authorization: Bearer {{counselorGmailToken}}
+
+### Browse Counselors filtered by fieldId - expected 200
+GET {{host}}/api/counselors?fieldId={{counselorFieldId}}
+Authorization: Bearer {{clientGmailToken}}
+
+### Browse Counselors with nonexistent fieldId -> expected 404
+GET {{host}}/api/counselors?fieldId=99999
+Authorization: Bearer {{clientGmailToken}}
+
+### Browse Counselors with invalid fieldId -> expected 400
+GET {{host}}/api/counselors?fieldId=abc
+Authorization: Bearer {{clientGmailToken}}
+
+### Browse Counselors unauthenticated -> expected 401
+GET {{host}}/api/counselors
