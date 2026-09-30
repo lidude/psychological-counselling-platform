@@ -197,7 +197,7 @@ POST {{baseUrl}}/signup/client
 Content-Type: application/json
 
 {
-  "email": "newclient@test.com",
+ "email": "testclient3009@test.com",
   "password": "Password123",
   "firstName": "New",
   "lastName": "Client",
