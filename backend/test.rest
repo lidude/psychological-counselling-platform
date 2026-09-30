@@ -188,6 +188,91 @@ GET {{baseUrl}}/me
 Authorization: NotBearer sometoken
 
 ###############################################
+# Client Signup
+###############################################
+
+### Client Signup - expected 201
+# @name clientSignup
+POST {{baseUrl}}/signup/client
+Content-Type: application/json
+
+{
+  "email": "newclient@test.com",
+  "password": "Password123",
+  "firstName": "New",
+  "lastName": "Client",
+  "phone": "+1234567890"
+}
+
+###
+@newClientToken = {{clientSignup.response.body.data.token}}
+@newClientId = {{clientSignup.response.body.data.user.id}}
+
+### Verify signup token works (/me) - expected 200
+GET {{baseUrl}}/me
+Authorization: Bearer {{newClientToken}}
+
+### Verify signup user role is CLIENT - expected 200
+GET {{baseUrl}}/me
+Authorization: Bearer {{newClientToken}}
+
+### Client Signup with duplicate email - expected 400
+POST {{baseUrl}}/signup/client
+Content-Type: application/json
+
+{
+  "email": "admin@gmail.com",
+  "password": "Password123",
+  "firstName": "Duplicate",
+  "lastName": "Email",
+  "phone": "+1234567890"
+}
+
+### Client Signup with invalid email - expected 400
+POST {{baseUrl}}/signup/client
+Content-Type: application/json
+
+{
+  "email": "not-an-email",
+  "password": "Password123",
+  "firstName": "Bad",
+  "lastName": "Email",
+  "phone": "+1234567890"
+}
+
+### Client Signup with short password - expected 400
+POST {{baseUrl}}/signup/client
+Content-Type: application/json
+
+{
+  "email": "shortpass@test.com",
+  "password": "123",
+  "firstName": "Short",
+  "lastName": "Password",
+  "phone": "+1234567890"
+}
+
+### Client Signup with missing fields - expected 400
+POST {{baseUrl}}/signup/client
+Content-Type: application/json
+
+{
+  "email": "missing@test.com"
+}
+
+### Client Signup with empty firstName - expected 400
+POST {{baseUrl}}/signup/client
+Content-Type: application/json
+
+{
+  "email": "emptyfirst@test.com",
+  "password": "Password123",
+  "firstName": "",
+  "lastName": "Name",
+  "phone": "+1234567890"
+}
+
+###############################################
 # Admin User Management
 ###############################################
 

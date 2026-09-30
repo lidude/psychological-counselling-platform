@@ -93,6 +93,45 @@ export const register = async (input: RegisterInput): Promise<AuthResponse> => {
   return { user: sanitizeUser(user), token };
 };
 
+export const clientSignup = async (input: {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+}): Promise<AuthResponse> => {
+  const existing = await prisma.user.findUnique({ where: { email: input.email } });
+  if (existing) {
+    throw ApiError.badRequest("Email is already registered");
+  }
+
+  const hashedPassword = await bcrypt.hash(input.password, 10);
+
+  const user = await prisma.user.create({
+    data: {
+      email: input.email,
+      password: hashedPassword,
+      firstName: input.firstName,
+      lastName: input.lastName,
+      phone: input.phone,
+      role: UserRole.CLIENT,
+    },
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+      role: true,
+      avatar: true,
+      createdAt: true,
+    },
+  });
+
+  const token = signToken({ id: user.id, email: user.email, role: user.role });
+  return { user: sanitizeUser(user), token };
+};
+
 export const login = async (input: LoginInput): Promise<AuthResponse> => {
   const user = await prisma.user.findUnique({ where: { email: input.email } });
   if (!user) {

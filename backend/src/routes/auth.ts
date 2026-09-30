@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { body } from "express-validator";
-import { register, login, getMe } from "../controllers/authController";
+import { register, login, getMe, clientSignup } from "../controllers/authController";
 import { validate } from "../middleware/validate";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 
@@ -25,6 +25,28 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const result = await register(req.body);
+      res.status(201).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.post(
+  "/signup/client",
+  [
+    body("email").isEmail().withMessage("Valid email is required").normalizeEmail(),
+    body("password")
+      .isLength({ min: 8 })
+      .withMessage("Password must be at least 8 characters"),
+    body("firstName").notEmpty().withMessage("First name is required").trim(),
+    body("lastName").notEmpty().withMessage("Last name is required").trim(),
+    body("phone").optional().isString().trim(),
+  ],
+  validate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await clientSignup(req.body);
       res.status(201).json({ success: true, data: result });
     } catch (err) {
       next(err);
