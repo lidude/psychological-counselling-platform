@@ -698,3 +698,436 @@ Content-Type: application/json
 DELETE {{host}}/api/fields/99999
 Authorization: Bearer {{adminGmailToken}}
 
+###############################################
+# Counselor Signup - Field Setup
+###############################################
+
+### Create Field for Counselor Signup (ADMIN) - expected 201
+# @name createCounselorField
+POST {{host}}/api/fields
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "name": "Test Counselor Field",
+  "description": "Field for counselor signup tests"
+}
+
+###
+@counselorFieldId = {{createCounselorField.response.body.data.id}}
+
+###############################################
+# Counselor Signup
+###############################################
+
+### Counselor Signup - expected 201
+# @name counselorSignup
+POST {{baseUrl}}/signup/counselor
+Content-Type: multipart/form-data; boundary=counselorBoundary
+
+--counselorBoundary
+Content-Disposition: form-data; name="firstName"
+
+John
+--counselorBoundary
+Content-Disposition: form-data; name="lastName"
+
+Counselor
+--counselorBoundary
+Content-Disposition: form-data; name="email"
+
+newcounselor@test.com
+--counselorBoundary
+Content-Disposition: form-data; name="phone"
+
++1234567890
+--counselorBoundary
+Content-Disposition: form-data; name="password"
+
+Password123
+--counselorBoundary
+Content-Disposition: form-data; name="bio"
+
+Experienced counselor
+--counselorBoundary
+Content-Disposition: form-data; name="fieldIds"
+
+{{counselorFieldId}}
+--counselorBoundary
+Content-Disposition: form-data; name="certificateTypes"
+
+EDUCATION
+--counselorBoundary
+Content-Disposition: form-data; name="certificateTypes"
+
+WORK_PERMIT
+--counselorBoundary
+Content-Disposition: form-data; name="certificates"; filename="test_education.pdf"
+Content-Type: application/pdf
+
+< ./uploads/certificates/test_education.pdf
+--counselorBoundary
+Content-Disposition: form-data; name="certificates"; filename="test_work_permit.pdf"
+Content-Type: application/pdf
+
+< ./uploads/certificates/test_work_permit.pdf
+--counselorBoundary--
+
+###
+@newCounselorToken = {{counselorSignup.response.body.data.token}}
+@newCounselorId = {{counselorSignup.response.body.data.user.id}}
+
+### Verify counselor signup token works (/me) - expected 200
+GET {{baseUrl}}/me
+Authorization: Bearer {{newCounselorToken}}
+
+### Verify counselor signup user role is COUNSELOR - expected 200
+GET {{baseUrl}}/me
+Authorization: Bearer {{newCounselorToken}}
+
+### Counselor Signup with duplicate email - expected 400
+POST {{baseUrl}}/signup/counselor
+Content-Type: multipart/form-data; boundary=counselorBoundary2
+
+--counselorBoundary2
+Content-Disposition: form-data; name="firstName"
+
+Duplicate
+--counselorBoundary2
+Content-Disposition: form-data; name="lastName"
+
+Email
+--counselorBoundary2
+Content-Disposition: form-data; name="email"
+
+newcounselor@test.com
+--counselorBoundary2
+Content-Disposition: form-data; name="password"
+
+Password123
+--counselorBoundary2
+Content-Disposition: form-data; name="fieldIds"
+
+{{counselorFieldId}}
+--counselorBoundary2
+Content-Disposition: form-data; name="certificateTypes"
+
+EDUCATION
+--counselorBoundary2
+Content-Disposition: form-data; name="certificateTypes"
+
+WORK_PERMIT
+--counselorBoundary2
+Content-Disposition: form-data; name="certificates"; filename="test_education.pdf"
+Content-Type: application/pdf
+
+< ./uploads/certificates/test_education.pdf
+--counselorBoundary2
+Content-Disposition: form-data; name="certificates"; filename="test_work_permit.pdf"
+Content-Type: application/pdf
+
+< ./uploads/certificates/test_work_permit.pdf
+--counselorBoundary2--
+
+### Counselor Signup with invalid email - expected 400
+POST {{baseUrl}}/signup/counselor
+Content-Type: multipart/form-data; boundary=counselorBoundary3
+
+--counselorBoundary3
+Content-Disposition: form-data; name="firstName"
+
+Bad
+--counselorBoundary3
+Content-Disposition: form-data; name="lastName"
+
+Email
+--counselorBoundary3
+Content-Disposition: form-data; name="email"
+
+not-an-email
+--counselorBoundary3
+Content-Disposition: form-data; name="password"
+
+Password123
+--counselorBoundary3
+Content-Disposition: form-data; name="fieldIds"
+
+{{counselorFieldId}}
+--counselorBoundary3
+Content-Disposition: form-data; name="certificateTypes"
+
+EDUCATION
+--counselorBoundary3
+Content-Disposition: form-data; name="certificateTypes"
+
+WORK_PERMIT
+--counselorBoundary3
+Content-Disposition: form-data; name="certificates"; filename="test_education.pdf"
+Content-Type: application/pdf
+
+< ./uploads/certificates/test_education.pdf
+--counselorBoundary3
+Content-Disposition: form-data; name="certificates"; filename="test_work_permit.pdf"
+Content-Type: application/pdf
+
+< ./uploads/certificates/test_work_permit.pdf
+--counselorBoundary3--
+
+### Counselor Signup with short password - expected 400
+POST {{baseUrl}}/signup/counselor
+Content-Type: multipart/form-data; boundary=counselorBoundary4
+
+--counselorBoundary4
+Content-Disposition: form-data; name="firstName"
+
+Short
+--counselorBoundary4
+Content-Disposition: form-data; name="lastName"
+
+Password
+--counselorBoundary4
+Content-Disposition: form-data; name="email"
+
+shortpass@test.com
+--counselorBoundary4
+Content-Disposition: form-data; name="password"
+
+123
+--counselorBoundary4
+Content-Disposition: form-data; name="fieldIds"
+
+{{counselorFieldId}}
+--counselorBoundary4
+Content-Disposition: form-data; name="certificateTypes"
+
+EDUCATION
+--counselorBoundary4
+Content-Disposition: form-data; name="certificateTypes"
+
+WORK_PERMIT
+--counselorBoundary4
+Content-Disposition: form-data; name="certificates"; filename="test_education.pdf"
+Content-Type: application/pdf
+
+< ./uploads/certificates/test_education.pdf
+--counselorBoundary4
+Content-Disposition: form-data; name="certificates"; filename="test_work_permit.pdf"
+Content-Type: application/pdf
+
+< ./uploads/certificates/test_work_permit.pdf
+--counselorBoundary4--
+
+### Counselor Signup with nonexistent fieldId - expected 400
+POST {{baseUrl}}/signup/counselor
+Content-Type: multipart/form-data; boundary=counselorBoundary5
+
+--counselorBoundary5
+Content-Disposition: form-data; name="firstName"
+
+Bad
+--counselorBoundary5
+Content-Disposition: form-data; name="lastName"
+
+Field
+--counselorBoundary5
+Content-Disposition: form-data; name="email"
+
+badfield@test.com
+--counselorBoundary5
+Content-Disposition: form-data; name="password"
+
+Password123
+--counselorBoundary5
+Content-Disposition: form-data; name="fieldIds"
+
+99999
+--counselorBoundary5
+Content-Disposition: form-data; name="certificateTypes"
+
+EDUCATION
+--counselorBoundary5
+Content-Disposition: form-data; name="certificateTypes"
+
+WORK_PERMIT
+--counselorBoundary5
+Content-Disposition: form-data; name="certificates"; filename="test_education.pdf"
+Content-Type: application/pdf
+
+< ./uploads/certificates/test_education.pdf
+--counselorBoundary5
+Content-Disposition: form-data; name="certificates"; filename="test_work_permit.pdf"
+Content-Type: application/pdf
+
+< ./uploads/certificates/test_work_permit.pdf
+--counselorBoundary5--
+
+### Counselor Signup missing EDUCATION certificate - expected 400
+POST {{baseUrl}}/signup/counselor
+Content-Type: multipart/form-data; boundary=counselorBoundary6
+
+--counselorBoundary6
+Content-Disposition: form-data; name="firstName"
+
+Missing
+--counselorBoundary6
+Content-Disposition: form-data; name="lastName"
+
+Education
+--counselorBoundary6
+Content-Disposition: form-data; name="email"
+
+misse duc@test.com
+--counselorBoundary6
+Content-Disposition: form-data; name="password"
+
+Password123
+--counselorBoundary6
+Content-Disposition: form-data; name="fieldIds"
+
+{{counselorFieldId}}
+--counselorBoundary6
+Content-Disposition: form-data; name="certificateTypes"
+
+WORK_PERMIT
+--counselorBoundary6
+Content-Disposition: form-data; name="certificates"; filename="test_work_permit.pdf"
+Content-Type: application/pdf
+
+< ./uploads/certificates/test_work_permit.pdf
+--counselorBoundary6--
+
+### Counselor Signup missing WORK_PERMIT certificate - expected 400
+POST {{baseUrl}}/signup/counselor
+Content-Type: multipart/form-data; boundary=counselorBoundary7
+
+--counselorBoundary7
+Content-Disposition: form-data; name="firstName"
+
+Missing
+--counselorBoundary7
+Content-Disposition: form-data; name="lastName"
+
+WorkPermit
+--counselorBoundary7
+Content-Disposition: form-data; name="email"
+
+missingwork@test.com
+--counselorBoundary7
+Content-Disposition: form-data; name="password"
+
+Password123
+--counselorBoundary7
+Content-Disposition: form-data; name="fieldIds"
+
+{{counselorFieldId}}
+--counselorBoundary7
+Content-Disposition: form-data; name="certificateTypes"
+
+EDUCATION
+--counselorBoundary7
+Content-Disposition: form-data; name="certificates"; filename="test_education.pdf"
+Content-Type: application/pdf
+
+< ./uploads/certificates/test_education.pdf
+--counselorBoundary7--
+
+### Counselor Signup with invalid certificate type - expected 400
+POST {{baseUrl}}/signup/counselor
+Content-Type: multipart/form-data; boundary=counselorBoundary8
+
+--counselorBoundary8
+Content-Disposition: form-data; name="firstName"
+
+Invalid
+--counselorBoundary8
+Content-Disposition: form-data; name="lastName"
+
+CertType
+--counselorBoundary8
+Content-Disposition: form-data; name="email"
+
+invalidcert@test.com
+--counselorBoundary8
+Content-Disposition: form-data; name="password"
+
+Password123
+--counselorBoundary8
+Content-Disposition: form-data; name="fieldIds"
+
+{{counselorFieldId}}
+--counselorBoundary8
+Content-Disposition: form-data; name="certificateTypes"
+
+INVALID_TYPE
+--counselorBoundary8
+Content-Disposition: form-data; name="certificates"; filename="test_education.pdf"
+Content-Type: application/pdf
+
+< ./uploads/certificates/test_education.pdf
+--counselorBoundary8--
+
+### Counselor Signup missing certificates - expected 400
+POST {{baseUrl}}/signup/counselor
+Content-Type: multipart/form-data; boundary=counselorBoundary9
+
+--counselorBoundary9
+Content-Disposition: form-data; name="firstName"
+
+Missing
+--counselorBoundary9
+Content-Disposition: form-data; name="lastName"
+
+Certificates
+--counselorBoundary9
+Content-Disposition: form-data; name="email"
+
+missingcert@test.com
+--counselorBoundary9
+Content-Disposition: form-data; name="password"
+
+Password123
+--counselorBoundary9
+Content-Disposition: form-data; name="fieldIds"
+
+{{counselorFieldId}}
+--counselorBoundary9--
+
+### Counselor Signup missing fieldIds - expected 400
+POST {{baseUrl}}/signup/counselor
+Content-Type: multipart/form-data; boundary=counselorBoundary10
+
+--counselorBoundary10
+Content-Disposition: form-data; name="firstName"
+
+Missing
+--counselorBoundary10
+Content-Disposition: form-data; name="lastName"
+
+FieldIds
+--counselorBoundary10
+Content-Disposition: form-data; name="email"
+
+missingfield@test.com
+--counselorBoundary10
+Content-Disposition: form-data; name="password"
+
+Password123
+--counselorBoundary10
+Content-Disposition: form-data; name="certificateTypes"
+
+EDUCATION
+--counselorBoundary10
+Content-Disposition: form-data; name="certificateTypes"
+
+WORK_PERMIT
+--counselorBoundary10
+Content-Disposition: form-data; name="certificates"; filename="test_education.pdf"
+Content-Type: application/pdf
+
+< ./uploads/certificates/test_education.pdf
+--counselorBoundary10
+Content-Disposition: form-data; name="certificates"; filename="test_work_permit.pdf"
+Content-Type: application/pdf
+
+< ./uploads/certificates/test_work_permit.pdf
+--counselorBoundary10--

@@ -107,6 +107,16 @@ export const deleteField = async (id: number): Promise<void> => {
     throw ApiError.notFound("Field not found");
   }
 
+  const inUse = await prisma.counselorField.findFirst({
+    where: { fieldId: id },
+  });
+
+  if (inUse) {
+    throw ApiError.badRequest(
+      "Cannot delete field because it is currently assigned to counselor profiles"
+    );
+  }
+
   await prisma.field.delete({
     where: { id },
   });
