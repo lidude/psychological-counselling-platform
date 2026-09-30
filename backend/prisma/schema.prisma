@@ -205,6 +205,7 @@ model CounselorProfile {
   user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   certificates      Certificate[]
   fields            CounselorField[]
+  sessionPlans      SessionPlan[]
 
   @@map("counselor_profiles")
 }
@@ -233,4 +234,18 @@ model CounselorField {
 
   @@unique([counselorProfileId, fieldId])
   @@map("counselor_fields")
+}
+
+model SessionPlan {
+  id                Int       @id @default(autoincrement())
+  counselorProfileId Int       @map("counselor_profile_id")
+  duration          Int
+  price             Decimal   @db.Decimal(10, 2)
+  quantity          Int
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  counselorProfile  CounselorProfile @relation(fields: [counselorProfileId], references: [id], onDelete: Cascade)
+
+  @@map("session_plans")
 }

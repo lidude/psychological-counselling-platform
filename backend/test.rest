@@ -1131,3 +1131,251 @@ Content-Type: application/pdf
 
 < ./uploads/certificates/test_work_permit.pdf
 --counselorBoundary10--
+
+###############################################
+# Counselor Session Plans
+# Prerequisites for successful tests:
+# - An APPROVED counselor profile with totalSessions > 0 must exist.
+# - The counselor must have a CounselorProfile linked to their user account.
+###############################################
+
+### Create Session Plan (APPROVED COUNSELOR) - expected 201
+# @name createSessionPlan
+POST {{host}}/api/counselor/session-plans
+Authorization: Bearer {{counselorGmailToken}}
+Content-Type: application/json
+
+{
+  "duration": 60,
+  "price": 50.00,
+  "quantity": 5
+}
+
+###
+@sessionPlanId = {{createSessionPlan.response.body.data.id}}
+
+### Get Session Plans (APPROVED COUNSELOR) - expected 200
+GET {{host}}/api/counselor/session-plans
+Authorization: Bearer {{counselorGmailToken}}
+
+### Update Session Plan (APPROVED COUNSELOR) - expected 200
+# @name updateSessionPlan
+PUT {{host}}/api/counselor/session-plans/{{sessionPlanId}}
+Authorization: Bearer {{counselorGmailToken}}
+Content-Type: application/json
+
+{
+  "duration": 30,
+  "price": 40.00,
+  "quantity": 3
+}
+
+### Delete Session Plan (APPROVED COUNSELOR) - expected 200
+DELETE {{host}}/api/counselor/session-plans/{{sessionPlanId}}
+Authorization: Bearer {{counselorGmailToken}}
+
+###############################################
+# Session Plans - Validation Error Tests
+###############################################
+
+### Create Session Plan with invalid duration -> expected 400
+POST {{host}}/api/counselor/session-plans
+Authorization: Bearer {{counselorGmailToken}}
+Content-Type: application/json
+
+{
+  "duration": 45,
+  "price": 50.00,
+  "quantity": 1
+}
+
+### Create Session Plan with zero price -> expected 400
+POST {{host}}/api/counselor/session-plans
+Authorization: Bearer {{counselorGmailToken}}
+Content-Type: application/json
+
+{
+  "duration": 60,
+  "price": 0,
+  "quantity": 1
+}
+
+### Create Session Plan with negative price -> expected 400
+POST {{host}}/api/counselor/session-plans
+Authorization: Bearer {{counselorGmailToken}}
+Content-Type: application/json
+
+{
+  "duration": 60,
+  "price": -10,
+  "quantity": 1
+}
+
+### Create Session Plan with zero quantity -> expected 400
+POST {{host}}/api/counselor/session-plans
+Authorization: Bearer {{counselorGmailToken}}
+Content-Type: application/json
+
+{
+  "duration": 60,
+  "price": 50.00,
+  "quantity": 0
+}
+
+### Create Session Plan with negative quantity -> expected 400
+POST {{host}}/api/counselor/session-plans
+Authorization: Bearer {{counselorGmailToken}}
+Content-Type: application/json
+
+{
+  "duration": 60,
+  "price": 50.00,
+  "quantity": -1
+}
+
+### Create Session Plan with non-integer quantity -> expected 400
+POST {{host}}/api/counselor/session-plans
+Authorization: Bearer {{counselorGmailToken}}
+Content-Type: application/json
+
+{
+  "duration": 60,
+  "price": 50.00,
+  "quantity": 2.5
+}
+
+###############################################
+# Session Plans - Quantity Exceeding totalSessions
+###############################################
+
+### Create Session Plan exceeding totalSessions -> expected 400
+# Prerequisite: counselor totalSessions must be less than requested quantity + existing total
+POST {{host}}/api/counselor/session-plans
+Authorization: Bearer {{counselorGmailToken}}
+Content-Type: application/json
+
+{
+  "duration": 60,
+  "price": 50.00,
+  "quantity": 9999
+}
+
+###############################################
+# Session Plans - Authentication Error Tests
+###############################################
+
+### Create Session Plan (missing token) -> expected 401
+POST {{host}}/api/counselor/session-plans
+Content-Type: application/json
+
+{
+  "duration": 60,
+  "price": 50.00,
+  "quantity": 1
+}
+
+### Get Session Plans (missing token) -> expected 401
+GET {{host}}/api/counselor/session-plans
+
+### Update Session Plan (missing token) -> expected 401
+PUT {{host}}/api/counselor/session-plans/1
+Content-Type: application/json
+
+{
+  "duration": 30,
+  "price": 40.00,
+  "quantity": 1
+}
+
+### Delete Session Plan (missing token) -> expected 401
+DELETE {{host}}/api/counselor/session-plans/1
+
+###############################################
+# Session Plans - Authorization Error Tests
+###############################################
+
+### Create Session Plan (CLIENT) -> expected 403
+POST {{host}}/api/counselor/session-plans
+Authorization: Bearer {{clientGmailToken}}
+Content-Type: application/json
+
+{
+  "duration": 60,
+  "price": 50.00,
+  "quantity": 1
+}
+
+### Get Session Plans (CLIENT) -> expected 403
+GET {{host}}/api/counselor/session-plans
+Authorization: Bearer {{clientGmailToken}}
+
+### Update Session Plan (CLIENT) -> expected 403
+PUT {{host}}/api/counselor/session-plans/1
+Authorization: Bearer {{clientGmailToken}}
+Content-Type: application/json
+
+{
+  "duration": 30,
+  "price": 40.00,
+  "quantity": 1
+}
+
+### Delete Session Plan (CLIENT) -> expected 403
+DELETE {{host}}/api/counselor/session-plans/1
+Authorization: Bearer {{clientGmailToken}}
+
+###############################################
+# Session Plans - Verification Error Tests
+###############################################
+
+### Create Session Plan (PENDING COUNSELOR) -> expected 403
+# Prerequisite: A counselor with PENDING verificationStatus must exist.
+# Use a newly created counselor via /signup/counselor for this test.
+POST {{host}}/api/counselor/session-plans
+Authorization: Bearer {{newCounselorToken}}
+Content-Type: application/json
+
+{
+  "duration": 60,
+  "price": 50.00,
+  "quantity": 1
+}
+
+### Update Session Plan (PENDING COUNSELOR) -> expected 403
+# Prerequisite: Same PENDING counselor must own the plan.
+PUT {{host}}/api/counselor/session-plans/1
+Authorization: Bearer {{newCounselorToken}}
+Content-Type: application/json
+
+{
+  "duration": 30,
+  "price": 40.00,
+  "quantity": 1
+}
+
+### Delete Session Plan (PENDING COUNSELOR) -> expected 403
+DELETE {{host}}/api/counselor/session-plans/1
+Authorization: Bearer {{newCounselorToken}}
+
+###############################################
+# Session Plans - Not Found Tests
+###############################################
+
+### Get non-existent session plan -> expected 404
+GET {{host}}/api/counselor/session-plans/99999
+Authorization: Bearer {{counselorGmailToken}}
+
+### Update non-existent session plan -> expected 404
+PUT {{host}}/api/counselor/session-plans/99999
+Authorization: Bearer {{counselorGmailToken}}
+Content-Type: application/json
+
+{
+  "duration": 30,
+  "price": 40.00,
+  "quantity": 1
+}
+
+### Delete non-existent session plan -> expected 404
+DELETE {{host}}/api/counselor/session-plans/99999
+Authorization: Bearer {{counselorGmailToken}}
