@@ -48,4 +48,4 @@ ALTER TABLE `counselor_fields` ADD CONSTRAINT `counselor_fields_counselor_profil
 ALTER TABLE `counselor_fields` ADD CONSTRAINT `counselor_fields_field_id_fkey` FOREIGN KEY (`field_id`) REFERENCES `fields`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- CreateIndex
-CREATE UNIQUE INDEX `counselor_fields_counselor_profile_id_field_id_key`(`counselor_profile_id`, `field_id`);
+ALTER TABLE `counselor_fields` ADD UNIQUE INDEX `counselor_fields_counselor_profile_id_field_id_key`(`counselor_profile_id`, `field_id`);
