@@ -1379,3 +1379,132 @@ Content-Type: application/json
 ### Delete non-existent session plan -> expected 404
 DELETE {{host}}/api/counselor/session-plans/99999
 Authorization: Bearer {{counselorGmailToken}}
+
+###############################################
+# Admin Counselor Verification
+###############################################
+
+### Get All Counselors (ADMIN) - expected 200
+GET {{host}}/api/admin/counselors
+Authorization: Bearer {{adminGmailToken}}
+
+### Get Pending Counselors (ADMIN) - expected 200
+GET {{host}}/api/admin/counselors?status=PENDING
+Authorization: Bearer {{adminGmailToken}}
+
+### Get Approved Counselors (ADMIN) - expected 200
+GET {{host}}/api/admin/counselors?status=APPROVED
+Authorization: Bearer {{adminGmailToken}}
+
+### Get Rejected Counselors (ADMIN) - expected 200
+GET {{host}}/api/admin/counselors?status=REJECTED
+Authorization: Bearer {{adminGmailToken}}
+
+### Get Counselors with invalid status filter -> expected 400
+GET {{host}}/api/admin/counselors?status=INVALID
+Authorization: Bearer {{adminGmailToken}}
+
+### Get Single Counselor Profile (ADMIN) - expected 200
+# @name getCounselorProfile
+GET {{host}}/api/admin/counselors/1
+Authorization: Bearer {{adminGmailToken}}
+
+###
+@counselorProfileId = {{getCounselorProfile.response.body.data.id}}
+
+### Approve Counselor (ADMIN) - expected 200
+# @name approveCounselor
+PATCH {{host}}/api/admin/counselors/{{counselorProfileId}}/verify
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "status": "APPROVED"
+}
+
+### Reject Counselor with reason (ADMIN) - expected 200
+# @name rejectCounselor
+PATCH {{host}}/api/admin/counselors/{{counselorProfileId}}/verify
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "status": "REJECTED",
+  "reason": "Missing required certification"
+}
+
+### Reject Counselor without reason -> expected 400
+PATCH {{host}}/api/admin/counselors/{{counselorProfileId}}/verify
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "status": "REJECTED"
+}
+
+### Verify Counselor with invalid status -> expected 400
+PATCH {{host}}/api/admin/counselors/{{counselorProfileId}}/verify
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "status": "INVALID_STATUS"
+}
+
+###############################################
+# Admin Counselor Verification - Auth Errors
+###############################################
+
+### Get Counselors (missing token) -> expected 401
+GET {{host}}/api/admin/counselors
+
+### Get Counselors (CLIENT) -> expected 403
+GET {{host}}/api/admin/counselors
+Authorization: Bearer {{clientGmailToken}}
+
+### Get Counselors (COUNSELOR) -> expected 403
+GET {{host}}/api/admin/counselors
+Authorization: Bearer {{counselorGmailToken}}
+
+### Approve Counselor (missing token) -> expected 401
+PATCH {{host}}/api/admin/counselors/1/verify
+Content-Type: application/json
+
+{
+  "status": "APPROVED"
+}
+
+### Approve Counselor (CLIENT) -> expected 403
+PATCH {{host}}/api/admin/counselors/1/verify
+Authorization: Bearer {{clientGmailToken}}
+Content-Type: application/json
+
+{
+  "status": "APPROVED"
+}
+
+### Approve Counselor (COUNSELOR) -> expected 403
+PATCH {{host}}/api/admin/counselors/1/verify
+Authorization: Bearer {{counselorGmailToken}}
+Content-Type: application/json
+
+{
+  "status": "APPROVED"
+}
+
+###############################################
+# Admin Counselor Verification - Not Found Tests
+###############################################
+
+### Get non-existent counselor profile -> expected 404
+GET {{host}}/api/admin/counselors/99999
+Authorization: Bearer {{adminGmailToken}}
+
+### Approve non-existent counselor profile -> expected 404
+PATCH {{host}}/api/admin/counselors/99999/verify
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "status": "APPROVED"
+}
