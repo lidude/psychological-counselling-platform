@@ -1,0 +1,615 @@
+@baseUrl = http://localhost:5002/api/auth
+@host = http://localhost:5002
+
+###############################################
+# Health Check
+###############################################
+GET {{host}}/api/health
+
+###############################################
+# Seed Note:
+# Run: npm run prisma:seed
+# This creates/updates the following accounts with bcrypt-hashed passwords:
+#   ADMIN:      admin@gmail.com      / Password123
+#   COUNSELOR:  counselor@gmail.com  / Password123
+#   CLIENT:     client@gmail.com     / Password123
+# Existing admin@test.com / Password123 is preserved.
+###############################################
+
+###############################################
+# Login - ADMIN (admin@gmail.com)
+###############################################
+### Login as ADMIN
+# @name adminGmailLogin
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "admin@gmail.com",
+  "password": "Password123"
+}
+
+###
+@adminGmailToken = {{adminGmailLogin.response.body.data.token}}
+
+###############################################
+# Login - COUNSELOR (counselor@gmail.com)
+###############################################
+### Login as COUNSELOR
+# @name counselorGmailLogin
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "counselor@gmail.com",
+  "password": "Password123"
+}
+
+###
+@counselorGmailToken = {{counselorGmailLogin.response.body.data.token}}
+
+###############################################
+# Login - CLIENT (client@gmail.com)
+###############################################
+### Login as CLIENT
+# @name clientGmailLogin
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "client@gmail.com",
+  "password": "Password123"
+}
+
+###
+@clientGmailToken = {{clientGmailLogin.response.body.data.token}}
+
+###############################################
+# Verify Role in Login Response
+###############################################
+### Verify ADMIN role returned
+GET {{baseUrl}}/me
+Authorization: Bearer {{adminGmailToken}}
+
+### Verify COUNSELOR role returned
+GET {{baseUrl}}/me
+Authorization: Bearer {{counselorGmailToken}}
+
+### Verify CLIENT role returned
+GET {{baseUrl}}/me
+Authorization: Bearer {{clientGmailToken}}
+
+###############################################
+# Existing Admin Account (admin@test.com)
+###############################################
+
+### Login as existing admin@test.com
+# @name adminTestLogin
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "admin@test.com",
+  "password": "Password123"
+}
+
+###
+@adminTestToken = {{adminTestLogin.response.body.data.token}}
+@adminTestId = {{adminTestLogin.response.body.data.user.id}}
+
+### Verify existing admin role returned
+GET {{baseUrl}}/me
+Authorization: Bearer {{adminTestToken}}
+
+###############################################
+# Role-Based Authorization Tests
+###############################################
+
+### ADMIN -> /api/admin/test (expected 200)
+GET {{host}}/api/admin/test
+Authorization: Bearer {{adminGmailToken}}
+
+### ADMIN -> /api/counselor/test (expected 403)
+GET {{host}}/api/counselor/test
+Authorization: Bearer {{adminGmailToken}}
+
+### ADMIN -> /api/client/test (expected 403)
+GET {{host}}/api/client/test
+Authorization: Bearer {{adminGmailToken}}
+
+### COUNSELOR -> /api/counselor/test (expected 200)
+GET {{host}}/api/counselor/test
+Authorization: Bearer {{counselorGmailToken}}
+
+### COUNSELOR -> /api/admin/test (expected 403)
+GET {{host}}/api/admin/test
+Authorization: Bearer {{counselorGmailToken}}
+
+### COUNSELOR -> /api/client/test (expected 403)
+GET {{host}}/api/client/test
+Authorization: Bearer {{counselorGmailToken}}
+
+### CLIENT -> /api/client/test (expected 200)
+GET {{host}}/api/client/test
+Authorization: Bearer {{clientGmailToken}}
+
+### CLIENT -> /api/admin/test (expected 403)
+GET {{host}}/api/admin/test
+Authorization: Bearer {{clientGmailToken}}
+
+### CLIENT -> /api/counselor/test (expected 403)
+GET {{host}}/api/counselor/test
+Authorization: Bearer {{clientGmailToken}}
+
+### Missing token -> /api/admin/test (expected 401)
+GET {{host}}/api/admin/test
+
+### Invalid token -> /api/admin/test (expected 401)
+GET {{host}}/api/admin/test
+Authorization: Bearer this.is.not.a.valid.jwt
+
+### Missing token -> /api/counselor/test (expected 401)
+GET {{host}}/api/counselor/test
+
+### Missing token -> /api/client/test (expected 401)
+GET {{host}}/api/client/test
+
+###############################################
+# Auth Error Tests
+###############################################
+
+### Invalid login (wrong password)
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "admin@gmail.com",
+  "password": "WrongPassword"
+}
+
+### Invalid login (non-existent email)
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "does.not.exist@test.com",
+  "password": "Password123"
+}
+
+### Me with missing token
+GET {{baseUrl}}/me
+
+### Me with invalid token
+GET {{baseUrl}}/me
+Authorization: Bearer this.is.not.a.valid.jwt
+
+### Me with malformed Authorization header
+GET {{baseUrl}}/me
+Authorization: NotBearer sometoken
+
+###############################################
+# Admin User Management
+###############################################
+
+### List Clients (ADMIN) - expected 200
+GET {{host}}/api/admin/users?role=CLIENT
+Authorization: Bearer {{adminGmailToken}}
+
+### List Counselors (ADMIN) - expected 200
+GET {{host}}/api/admin/users?role=COUNSELOR
+Authorization: Bearer {{adminGmailToken}}
+
+### Get Single User - admin@test.com (ADMIN) - expected 200
+GET {{host}}/api/admin/users/{{adminTestId}}
+Authorization: Bearer {{adminGmailToken}}
+
+### Create Client (ADMIN) - expected 201
+# @name createClient
+POST {{host}}/api/admin/users
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "email": "newclient2@test.com",
+  "password": "Password123",
+  "firstName": "New",
+  "lastName": "Client",
+  "phone": "+1234567894",
+  "role": "CLIENT"
+}
+
+###
+@newClientId = {{createClient.response.body.data.user.id}}
+
+### Create Counselor (ADMIN) - expected 201
+# @name createCounselor
+POST {{host}}/api/admin/users
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "email": "newcounselor@test.com",
+  "password": "Password123",
+  "firstName": "New",
+  "lastName": "Counselor",
+  "phone": "+1234567894",
+  "role": "COUNSELOR"
+}
+
+###
+@newCounselorId = {{createCounselor.response.body.data.user.id}}
+
+### Update Client (ADMIN) - expected 200
+PUT {{host}}/api/admin/users/{{newClientId}}
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "firstName": "Updated",
+  "lastName": "Client",
+  "phone": "+1987654321"
+}
+
+### Update Counselor (ADMIN) - expected 200
+PUT {{host}}/api/admin/users/{{newCounselorId}}
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "firstName": "Updated",
+  "lastName": "Counselor",
+  "phone": "+1987654322"
+}
+
+### Delete Created Counselor (ADMIN) - expected 200
+DELETE {{host}}/api/admin/users/{{newCounselorId}}
+Authorization: Bearer {{adminGmailToken}}
+
+### Delete Created Client (ADMIN) - expected 200
+DELETE {{host}}/api/admin/users/{{newClientId}}
+Authorization: Bearer {{adminGmailToken}}
+
+###############################################
+# Authorization Error Tests - Admin Endpoints
+###############################################
+
+### List Clients (COUNSELOR) - expected 403
+GET {{host}}/api/admin/users?role=CLIENT
+Authorization: Bearer {{counselorGmailToken}}
+
+### List Counselors (COUNSELOR) - expected 403
+GET {{host}}/api/admin/users?role=COUNSELOR
+Authorization: Bearer {{counselorGmailToken}}
+
+### Get Single User (COUNSELOR) - expected 403
+GET {{host}}/api/admin/users/{{adminTestId}}
+Authorization: Bearer {{counselorGmailToken}}
+
+### Create Client (COUNSELOR) - expected 403
+POST {{host}}/api/admin/users
+Authorization: Bearer {{counselorGmailToken}}
+Content-Type: application/json
+
+{
+  "email": "unauthorized@test.com",
+  "password": "Password123",
+  "firstName": "No",
+  "lastName": "Auth",
+  "phone": "+1234567895",
+  "role": "CLIENT"
+}
+
+### Update User (COUNSELOR) - expected 403
+PUT {{host}}/api/admin/users/{{adminTestId}}
+Authorization: Bearer {{counselorGmailToken}}
+Content-Type: application/json
+
+{
+  "firstName": "Hacker"
+}
+
+### Delete User (COUNSELOR) - expected 403
+DELETE {{host}}/api/admin/users/{{adminTestId}}
+Authorization: Bearer {{counselorGmailToken}}
+
+### List Clients (CLIENT) - expected 403
+GET {{host}}/api/admin/users?role=CLIENT
+Authorization: Bearer {{clientGmailToken}}
+
+### Create Client (CLIENT) - expected 403
+POST {{host}}/api/admin/users
+Authorization: Bearer {{clientGmailToken}}
+Content-Type: application/json
+
+{
+  "email": "unauthorized2@test.com",
+  "password": "Password123",
+  "firstName": "No",
+  "lastName": "Auth",
+  "phone": "+1234567896",
+  "role": "CLIENT"
+}
+
+###############################################
+# Authentication Error Tests - Admin Endpoints
+###############################################
+
+### List Clients (missing token) - expected 401
+GET {{host}}/api/admin/users?role=CLIENT
+
+### List Clients (invalid token) - expected 401
+GET {{host}}/api/admin/users?role=CLIENT
+Authorization: Bearer this.is.not.a.valid.jwt
+
+### List Clients (malformed header) - expected 401
+GET {{host}}/api/admin/users?role=CLIENT
+Authorization: NotBearer sometoken
+
+###############################################
+# Validation Error Tests
+###############################################
+
+### Get non-existent user - expected 404
+GET {{host}}/api/admin/users/99999
+Authorization: Bearer {{adminGmailToken}}
+
+### Create user with duplicate email - expected 400
+POST {{host}}/api/admin/users
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "email": "admin@gmail.com",
+  "password": "Password123",
+  "firstName": "Duplicate",
+  "lastName": "Email",
+  "phone": "+1234567897",
+  "role": "CLIENT"
+}
+
+### Create user with invalid role - expected 400
+POST {{host}}/api/admin/users
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "email": "badrole@test.com",
+  "password": "Password123",
+  "firstName": "Bad",
+  "lastName": "Role",
+  "role": "ADMIN"
+}
+
+### Create user with invalid email - expected 400
+POST {{host}}/api/admin/users
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "email": "not-an-email",
+  "password": "Password123",
+  "firstName": "Bad",
+  "lastName": "Email",
+  "phone": "+1234567898",
+  "role": "CLIENT"
+}
+
+### Create user with short password - expected 400
+POST {{host}}/api/admin/users
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "email": "shortpass@test.com",
+  "password": "123",
+  "firstName": "Short",
+  "lastName": "Password",
+  "phone": "+1234567899",
+  "role": "CLIENT"
+}
+
+### Create user with missing fields - expected 400
+POST {{host}}/api/admin/users
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "email": "missing@test.com"
+}
+
+### Update user with empty body - expected 400
+PUT {{host}}/api/admin/users/{{adminTestId}}
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{}
+
+###############################################
+# Delete Protection Tests
+###############################################
+
+### Delete admin account (admin@test.com) - expected 403
+DELETE {{host}}/api/admin/users/{{adminTestId}}
+Authorization: Bearer {{adminGmailToken}}
+
+### Delete non-existent user - expected 404
+DELETE {{host}}/api/admin/users/99999
+Authorization: Bearer {{adminGmailToken}}
+
+###############################################
+# Password Exposure Check
+###############################################
+# Verify that list, get, create, and update responses do not contain password field.
+# Responses should include: id, email, firstName, lastName, phone, role, createdAt (and avatar for auth endpoints).
+# No password field should be present in any user object.
+
+###############################################
+# Fields - Public List
+###############################################
+
+### List Fields (public, no auth) - expected 200
+GET {{host}}/api/fields
+
+###############################################
+# Fields - Admin CRUD
+###############################################
+
+### Create Field (ADMIN) - expected 201
+# @name createField
+POST {{host}}/api/fields
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "name": "Marriage Counseling",
+  "description": "Support for couples and married individuals"
+}
+
+###
+@fieldId = {{createField.response.body.data.id}}
+
+### List Fields after create (public) - expected 200
+GET {{host}}/api/fields
+
+### Get Single Field (public) - expected 200
+GET {{host}}/api/fields/{{fieldId}}
+
+### Update Field (ADMIN) - expected 200
+PUT {{host}}/api/fields/{{fieldId}}
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "name": "Marriage & Relationship Counseling",
+  "description": "Updated description"
+}
+
+### Delete Field (ADMIN) - expected 200
+# @name deleteField
+DELETE {{host}}/api/fields/{{fieldId}}
+Authorization: Bearer {{adminGmailToken}}
+
+###
+@deletedFieldId = {{deleteField.response.body.data.id}}
+
+###############################################
+# Fields - Authorization Error Tests
+###############################################
+
+### Create Field (COUNSELOR) - expected 403
+POST {{host}}/api/fields
+Authorization: Bearer {{counselorGmailToken}}
+Content-Type: application/json
+
+{
+  "name": "Unauthorized Field",
+  "description": "Should not be created"
+}
+
+### Update Field (COUNSELOR) - expected 403
+PUT {{host}}/api/fields/{{fieldId}}
+Authorization: Bearer {{counselorGmailToken}}
+Content-Type: application/json
+
+{
+  "name": "Hacked"
+}
+
+### Delete Field (COUNSELOR) - expected 403
+DELETE {{host}}/api/fields/{{fieldId}}
+Authorization: Bearer {{counselorGmailToken}}
+
+### Create Field (CLIENT) - expected 403
+POST {{host}}/api/fields
+Authorization: Bearer {{clientGmailToken}}
+Content-Type: application/json
+
+{
+  "name": "Unauthorized Field 2",
+  "description": "Should not be created"
+}
+
+###############################################
+# Fields - Authentication Error Tests
+###############################################
+
+### Create Field (missing token) - expected 401
+POST {{host}}/api/fields
+Content-Type: application/json
+
+{
+  "name": "No Auth Field"
+}
+
+### Create Field (invalid token) - expected 401
+POST {{host}}/api/fields
+Authorization: Bearer this.is.not.a.valid.jwt
+Content-Type: application/json
+
+{
+  "name": "Bad Auth Field"
+}
+
+###############################################
+# Fields - Validation Error Tests
+###############################################
+
+### Create Field with missing name - expected 400
+POST {{host}}/api/fields
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "description": "No name provided"
+}
+
+### Create Field with empty name - expected 400
+POST {{host}}/api/fields
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "name": ""
+}
+
+### Create Field with duplicate name - expected 400
+POST {{host}}/api/fields
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "name": "Marriage Counseling"
+}
+
+### Update Field with invalid ID - expected 400
+PUT {{host}}/api/fields/0
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "name": "Test"
+}
+
+### Get Field with invalid ID - expected 400
+GET {{host}}/api/fields/0
+
+###############################################
+# Fields - Not Found Tests
+###############################################
+
+### Get non-existent field - expected 404
+GET {{host}}/api/fields/99999
+
+### Update non-existent field - expected 404
+PUT {{host}}/api/fields/99999
+Authorization: Bearer {{adminGmailToken}}
+Content-Type: application/json
+
+{
+  "name": "Ghost"
+}
+
+### Delete non-existent field - expected 404
+DELETE {{host}}/api/fields/99999
+Authorization: Bearer {{adminGmailToken}}
+
