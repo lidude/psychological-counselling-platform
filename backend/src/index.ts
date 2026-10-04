@@ -4,7 +4,9 @@ import helmet from "helmet";
 import morgan from "morgan";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth";
+import adminRoutes from "./routes/admin";
 import protectedRoutes from "./routes/protected";
+import counselorRoutes from "./routes/counselor";
 import apiRouter from "./routes";
 import { errorHandler } from "./middleware/errorHandler";
 
@@ -31,7 +33,9 @@ app.get("/api/health", (_req, res) => {
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api", protectedRoutes);
+app.use("/api/counselor", counselorRoutes);
 app.use("/api", apiRouter);
 
 // Error handling middleware (must be last)
