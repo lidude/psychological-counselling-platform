@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { body, param, query } from "express-validator";
-import { UserRole } from "@prisma/client";
+import { UserRole, VerificationStatus } from "@prisma/client";
 import { validate } from "../middleware/validate";
 import { authMiddleware } from "../middleware/auth";
 import { requireRole } from "../middleware/role";
@@ -10,6 +10,9 @@ import {
   getUserById,
   updateUser,
   deleteUser,
+  getCounselorProfiles,
+  getCounselorProfileById,
+  verifyCounselorProfile,
 } from "../controllers/adminController";
 
 const router = Router();
@@ -109,6 +112,68 @@ router.delete(
       const id = parseInt(req.params.id, 10);
       await deleteUser(id);
       res.json({ success: true, message: "User deleted successfully" });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.get(
+  "/counselors",
+  [
+    query("status")
+      .optional()
+      .isIn(["PENDING", "APPROVED", "REJECTED"])
+      .withMessage("Invalid status filter. Use PENDING, APPROVED, or REJECTED"),
+  ],
+  validate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const status = req.query.status as VerificationStatus | undefined;
+      const counselors = await getCounselorProfiles(status);
+      res.json({ success: true, data: counselors });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.get(
+  "/counselors/:id",
+  [param("id").isInt({ min: 1 }).withMessage("Valid counselor profile ID is required")],
+  validate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const counselor = await getCounselorProfileById(id);
+      res.json({ success: true, data: counselor });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.patch(
+  "/counselors/:id/verify",
+  [
+    param("id").isInt({ min: 1 }).withMessage("Valid counselor profile ID is required"),
+    body("status")
+      .isIn(["APPROVED", "REJECTED"])
+      .withMessage("Invalid verification status. Use APPROVED or REJECTED"),
+    body("reason")
+      .optional()
+      .isString()
+      .trim()
+      .isLength({ min: 1 })
+      .withMessage("Reason must not be empty when provided"),
+  ],
+  validate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const { status, reason } = req.body;
+      const result = await verifyCounselorProfile(id, status, reason);
+      res.json({ success: true, data: result });
     } catch (err) {
       next(err);
     }

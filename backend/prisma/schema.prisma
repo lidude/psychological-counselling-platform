@@ -42,6 +42,7 @@ model User {
 
   counselor     Counselor?
   client        Client?
+  counselorProfile CounselorProfile?
   appointments  Appointment[]
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
@@ -166,4 +167,85 @@ model Message {
   receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
 
   @@map("messages")
+}
+
+model Field {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  counselorFields CounselorField[]
+
+  @@map("fields")
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CertificateType {
+  EDUCATION
+  WORK_PERMIT
+}
+
+model CounselorProfile {
+  id                Int                @id @default(autoincrement())
+  userId            Int                @unique @map("user_id")
+  bio               String?
+  totalSessions     Int                @default(0) @map("total_sessions")
+  verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
+  rejectionReason   String?             @map("rejection_reason")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  certificates      Certificate[]
+  fields            CounselorField[]
+  sessionPlans      SessionPlan[]
+
+  @@map("counselor_profiles")
+}
+
+model Certificate {
+  id                Int             @id @default(autoincrement())
+  counselorProfileId Int             @map("counselor_profile_id")
+  type               CertificateType
+  fileUrl            String          @map("file_url")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  counselorProfile   CounselorProfile @relation(fields: [counselorProfileId], references: [id], onDelete: Cascade)
+
+  @@map("certificates")
+}
+
+model CounselorField {
+  id                Int             @id @default(autoincrement())
+  counselorProfileId Int             @map("counselor_profile_id")
+  fieldId           Int             @map("field_id")
+  createdAt         DateTime        @default(now()) @map("created_at")
+
+  counselorProfile   CounselorProfile @relation(fields: [counselorProfileId], references: [id], onDelete: Cascade)
+  field              Field            @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([counselorProfileId, fieldId])
+  @@map("counselor_fields")
+}
+
+model SessionPlan {
+  id                Int       @id @default(autoincrement())
+  counselorProfileId Int       @map("counselor_profile_id")
+  duration          Int
+  price             Decimal   @db.Decimal(10, 2)
+  quantity          Int
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  counselorProfile  CounselorProfile @relation(fields: [counselorProfileId], references: [id], onDelete: Cascade)
+
+  @@map("session_plans")
 }
