@@ -93,7 +93,13 @@ export const updateUser = async (
     }
   }
 
-  const updateData: Record<string, unknown> = {};
+  const updateData: {
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string | null;
+    password?: string;
+  } = {};
 
   if (data.email !== undefined) updateData.email = data.email;
   if (data.firstName !== undefined) updateData.firstName = data.firstName;
@@ -165,7 +171,7 @@ export interface AdminCounselorProfilePayload {
 }
 
 export const getCounselorProfiles = async (status?: VerificationStatus): Promise<AdminCounselorProfilePayload[]> => {
-  const where: any = {};
+  const where: { verificationStatus?: VerificationStatus } = {};
   if (status) {
     where.verificationStatus = status;
   }
@@ -337,12 +343,10 @@ export const verifyCounselorProfile = async (id: number, status: VerificationSta
     }
   }
 
-  const updateData: any = { verificationStatus: status };
-  if (status === VerificationStatus.REJECTED && reason) {
-    updateData.rejectionReason = reason.trim();
-  } else {
-    updateData.rejectionReason = null;
-  }
+  const updateData: { verificationStatus: VerificationStatus; rejectionReason: string | null } = {
+    verificationStatus: status,
+    rejectionReason: status === VerificationStatus.REJECTED && reason ? reason.trim() : null,
+  };
 
   const updated = await prisma.counselorProfile.update({
     where: { id },

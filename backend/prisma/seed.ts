@@ -12,6 +12,14 @@ const SEED_USERS = [
     role: UserRole.ADMIN,
   },
   {
+    email: "admin@test.com",
+    password: "Password123",
+    firstName: "Admin",
+    lastName: "User",
+    phone: null as string | null,
+    role: UserRole.ADMIN,
+  },
+  {
     email: "counselor@gmail.com",
     password: "Password123",
     firstName: "Counselor",
@@ -47,16 +55,6 @@ const seed = async () => {
     });
 
     console.log(`Seeded: ${user.email} (${user.role})`);
-  }
-
-  const adminTest = await prisma.user.findUnique({
-    where: { email: "admin@test.com" },
-  });
-
-  if (adminTest) {
-    console.log(`Preserved existing admin account: ${adminTest.email} (${adminTest.role})`);
-  } else {
-    console.log("Note: admin@test.com not found in database. It may need to be created manually.");
   }
 
   console.log("Seed completed successfully.");

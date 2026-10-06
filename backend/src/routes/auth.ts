@@ -3,6 +3,8 @@ import { body } from "express-validator";
 import { register, login, getMe, clientSignup, counselorSignup } from "../controllers/authController";
 import { validate } from "../middleware/validate";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { requireRole } from "../middleware/role";
+import { UserRole } from "@prisma/client";
 import upload from "../middleware/upload";
 
 const router = Router();
@@ -21,6 +23,33 @@ router.post(
       .optional()
       .isIn(["CLIENT", "COUNSELOR", "ADMIN"])
       .withMessage("Invalid role"),
+  ],
+  validate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await register(req.body);
+      res.status(201).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.post(
+  "/admin/create-user",
+  authMiddleware,
+  requireRole(UserRole.ADMIN),
+  [
+    body("email").isEmail().withMessage("Valid email is required").normalizeEmail(),
+    body("password")
+      .isLength({ min: 8 })
+      .withMessage("Password must be at least 8 characters"),
+    body("firstName").notEmpty().withMessage("First name is required").trim(),
+    body("lastName").notEmpty().withMessage("Last name is required").trim(),
+    body("phone").optional().isString().trim(),
+    body("role")
+      .isIn(["CLIENT", "COUNSELOR"])
+      .withMessage("Role must be CLIENT or COUNSELOR"),
   ],
   validate,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -80,7 +109,7 @@ router.post(
         password: req.body.password,
         bio: req.body.bio,
         fieldIds,
-        certificates: (req as any).files as Express.Multer.File[],
+        certificates: (req as Request & { files?: Express.Multer.File[] }).files as Express.Multer.File[],
         certificateTypes,
       });
 
