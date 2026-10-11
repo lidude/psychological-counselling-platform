@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { query } from "express-validator";
-import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { SessionStatus } from "@prisma/client";
+import { authMiddleware } from "../middleware/auth";
 import { validate } from "../middleware/validate";
 import prisma from "../lib/prisma";
 import { ApiError } from "../utils/apiError";
@@ -113,6 +114,252 @@ export const getApprovedCounselors = async (fieldId?: number): Promise<Counselor
     })),
     sessionPlans: profile.sessionPlans.map(serializePlan),
   }));
+};
+
+/** Helper to get or ensure counselor ID for a given user ID */
+export const getCounselorRecord = async (userId: number) => {
+  let counselor = await prisma.counselor.findUnique({
+    where: { userId },
+  });
+
+  if (!counselor) {
+    counselor = await prisma.counselor.create({
+      data: {
+        userId,
+        specialization: "Licensed Psychological Counselling",
+        hourlyRate: 50.0,
+        isAvailable: true,
+      },
+    });
+  }
+
+  return counselor;
+};
+
+/** Get clients assigned to this counselor through appointments or sessions */
+export const getCounselorClients = async (userId: number) => {
+  const counselor = await getCounselorRecord(userId);
+
+  // Clients with appointments
+  const appointments = await prisma.appointment.findMany({
+    where: { counselorId: counselor.id },
+    include: {
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          avatar: true,
+          createdAt: true,
+          client: true,
+        },
+      },
+      session: true,
+    },
+    orderBy: { date: "desc" },
+  });
+
+  // Clients with sessions
+  const sessions = await prisma.session.findMany({
+    where: { counselorId: counselor.id },
+    include: {
+      client: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+              avatar: true,
+              createdAt: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // Unique client map
+  const clientsMap = new Map<number, any>();
+
+  for (const appt of appointments) {
+    if (!clientsMap.has(appt.user.id)) {
+      clientsMap.set(appt.user.id, {
+        id: appt.user.id,
+        firstName: appt.user.firstName,
+        lastName: appt.user.lastName,
+        email: appt.user.email,
+        phone: appt.user.phone,
+        avatar: appt.user.avatar,
+        registeredAt: appt.user.createdAt,
+        emergencyContact: appt.user.client?.emergencyContact || null,
+        gender: appt.user.client?.gender || null,
+        appointmentCount: 1,
+        lastAppointment: appt.date,
+      });
+    } else {
+      const client = clientsMap.get(appt.user.id);
+      client.appointmentCount += 1;
+    }
+  }
+
+  for (const sess of sessions) {
+    if (sess.client && sess.client.user) {
+      if (!clientsMap.has(sess.client.user.id)) {
+        clientsMap.set(sess.client.user.id, {
+          id: sess.client.user.id,
+          firstName: sess.client.user.firstName,
+          lastName: sess.client.user.lastName,
+          email: sess.client.user.email,
+          phone: sess.client.user.phone,
+          avatar: sess.client.user.avatar,
+          registeredAt: sess.client.user.createdAt,
+          emergencyContact: sess.client.emergencyContact || null,
+          gender: sess.client.gender || null,
+          appointmentCount: 0,
+          lastAppointment: sess.createdAt,
+        });
+      }
+    }
+  }
+
+  return Array.from(clientsMap.values());
+};
+
+/** Get appointments for this counselor */
+export const getCounselorAppointments = async (userId: number) => {
+  const counselor = await getCounselorRecord(userId);
+
+  const appointments = await prisma.appointment.findMany({
+    where: { counselorId: counselor.id },
+    include: {
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+        },
+      },
+      session: true,
+    },
+    orderBy: { date: "asc" },
+  });
+
+  return appointments;
+};
+
+/** Get counselling sessions for this counselor */
+export const getCounselorSessions = async (userId: number) => {
+  const counselor = await getCounselorRecord(userId);
+
+  const sessions = await prisma.session.findMany({
+    where: { counselorId: counselor.id },
+    include: {
+      client: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
+          },
+        },
+      },
+      appointment: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return sessions;
+};
+
+/** Update session notes */
+export const updateSessionNotes = async (
+  userId: number,
+  sessionId: number,
+  notes: string
+) => {
+  const counselor = await getCounselorRecord(userId);
+
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+  });
+
+  if (!session) {
+    throw ApiError.notFound("Session not found");
+  }
+
+  if (session.counselorId !== counselor.id) {
+    throw ApiError.forbidden("Not authorized to update notes for this session");
+  }
+
+  const updated = await prisma.session.update({
+    where: { id: sessionId },
+    data: { notes },
+  });
+
+  return updated;
+};
+
+/** Update session status */
+export const updateSessionStatus = async (
+  userId: number,
+  sessionId: number,
+  status: SessionStatus
+) => {
+  const counselor = await getCounselorRecord(userId);
+
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+  });
+
+  if (!session) {
+    throw ApiError.notFound("Session not found");
+  }
+
+  if (session.counselorId !== counselor.id) {
+    throw ApiError.forbidden("Not authorized to update this session");
+  }
+
+  const updated = await prisma.session.update({
+    where: { id: sessionId },
+    data: { status },
+  });
+
+  return updated;
+};
+
+/** Get Counselor dashboard overview statistics */
+export const getCounselorDashboardStats = async (userId: number) => {
+  const counselor = await getCounselorRecord(userId);
+
+  const [appointmentsCount, sessionsCount, completedSessionsCount] = await Promise.all([
+    prisma.appointment.count({ where: { counselorId: counselor.id } }),
+    prisma.session.count({ where: { counselorId: counselor.id } }),
+    prisma.session.count({
+      where: { counselorId: counselor.id, status: SessionStatus.COMPLETED },
+    }),
+  ]);
+
+  const clients = await getCounselorClients(userId);
+
+  return {
+    totalClients: clients.length,
+    totalAppointments: appointmentsCount,
+    totalSessions: sessionsCount,
+    completedSessions: completedSessionsCount,
+    specialization: counselor.specialization,
+    isAvailable: counselor.isAvailable,
+  };
 };
 
 const router = Router();

@@ -3,7 +3,9 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminLayout from "./components/AdminLayout";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import Dashboard from "./pages/admin/Dashboard";
+import Users from "./pages/admin/Users";
 import Clients from "./pages/admin/Clients";
 import Counselors from "./pages/admin/Counselors";
 import CounselorDashboard from "./pages/CounselorDashboard";
@@ -34,6 +36,9 @@ function AppRoutes(): ReactNode {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/signin" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/signup" element={<Register />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
       <Route path="/" element={<RoleRedirect />} />
 
@@ -47,6 +52,7 @@ function AppRoutes(): ReactNode {
         }
       >
         <Route index element={<Dashboard />} />
+        <Route path="users" element={<Users />} />
         <Route path="clients" element={<Clients />} />
         <Route path="clients/:id" element={<Clients />} />
         <Route path="counselors" element={<Counselors />} />

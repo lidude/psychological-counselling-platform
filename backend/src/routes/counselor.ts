@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { body } from "express-validator";
+import { body, param } from "express-validator";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { requireRole } from "../middleware/role";
 import { validate } from "../middleware/validate";
@@ -10,25 +10,129 @@ import {
   updateSessionPlan,
   deleteSessionPlan,
 } from "../controllers/sessionPlanController";
-import { UserRole } from "@prisma/client";
+import {
+  getCounselorClients,
+  getCounselorAppointments,
+  getCounselorSessions,
+  updateSessionNotes,
+  updateSessionStatus,
+  getCounselorDashboardStats,
+} from "../controllers/counselorController";
+import { UserRole, SessionStatus } from "@prisma/client";
 import { ApiError } from "../utils/apiError";
 
 const router = Router();
 
+// Protect all counselor routes with JWT auth and strict COUNSELOR role
 router.use(authMiddleware, requireRole(UserRole.COUNSELOR));
 
+// Counselor dashboard summary metrics
+router.get("/dashboard-stats", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authReq = req as AuthRequest;
+    const stats = await getCounselorDashboardStats(authReq.user!.id);
+    res.json({ success: true, data: stats });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Counselor assigned clients
+router.get("/clients", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authReq = req as AuthRequest;
+    const clients = await getCounselorClients(authReq.user!.id);
+    res.json({ success: true, data: clients });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Counselor appointments
+router.get("/appointments", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authReq = req as AuthRequest;
+    const appointments = await getCounselorAppointments(authReq.user!.id);
+    res.json({ success: true, data: appointments });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Counselor sessions and notes
+router.get("/sessions", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authReq = req as AuthRequest;
+    const sessions = await getCounselorSessions(authReq.user!.id);
+    res.json({ success: true, data: sessions });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put(
+  "/sessions/:id/notes",
+  [
+    param("id").isInt({ min: 1 }).withMessage("Valid session ID required"),
+    body("notes").isString().withMessage("Notes must be a string"),
+  ],
+  validate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const authReq = req as AuthRequest;
+      const sessionId = Number(req.params.id);
+      const updated = await updateSessionNotes(authReq.user!.id, sessionId, req.body.notes);
+      res.json({ success: true, data: updated });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.put(
+  "/sessions/:id/status",
+  [
+    param("id").isInt({ min: 1 }).withMessage("Valid session ID required"),
+    body("status")
+      .isIn(["SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "NO_SHOW"])
+      .withMessage("Invalid session status"),
+  ],
+  validate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const authReq = req as AuthRequest;
+      const sessionId = Number(req.params.id);
+      const updated = await updateSessionStatus(
+        authReq.user!.id,
+        sessionId,
+        req.body.status as SessionStatus
+      );
+      res.json({ success: true, data: updated });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// Counselor Profile Resolver for Session Plans
 const resolveCounselorProfile = async (req: AuthRequest, _res: Response, next: NextFunction) => {
   try {
     if (!req.user) {
       return next(ApiError.unauthorized("Authentication required"));
     }
 
-    const profile = await prisma.counselorProfile.findUnique({
+    let profile = await prisma.counselorProfile.findUnique({
       where: { userId: req.user.id },
     });
 
     if (!profile) {
-      return next(ApiError.notFound("Counselor profile not found"));
+      // Create empty profile if not yet created so session plans work seamlessly
+      profile = await prisma.counselorProfile.create({
+        data: {
+          userId: req.user.id,
+          bio: "Registered Mental Health Professional",
+        },
+      });
     }
 
     (req as any).counselorProfileId = profile.id;
@@ -38,6 +142,7 @@ const resolveCounselorProfile = async (req: AuthRequest, _res: Response, next: N
   }
 };
 
+// Session plans management
 router.post(
   "/session-plans",
   resolveCounselorProfile,

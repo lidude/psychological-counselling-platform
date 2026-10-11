@@ -7,8 +7,10 @@ import authRoutes from "./routes/auth";
 import adminRoutes from "./routes/admin";
 import protectedRoutes from "./routes/protected";
 import counselorRoutes from "./routes/counselor";
+import clientRoutes from "./routes/client";
 import apiRouter from "./routes";
 import { errorHandler } from "./middleware/errorHandler";
+import { bootstrapAdmin } from "./utils/bootstrapAdmin";
 
 dotenv.config();
 
@@ -34,16 +36,20 @@ app.get("/api/health", (_req, res) => {
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/api", protectedRoutes);
 app.use("/api/counselor", counselorRoutes);
+app.use("/api/client", clientRoutes);
+app.use("/api", protectedRoutes);
 app.use("/api", apiRouter);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
+
+  // Automatically provision or elevate bootstrap administrator salmamustefa@gmail.com
+  await bootstrapAdmin();
 });
 
 export default app;

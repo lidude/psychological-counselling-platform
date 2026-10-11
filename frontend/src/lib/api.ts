@@ -8,7 +8,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -20,7 +20,20 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
-      window.location.href = "/login";
+      localStorage.removeItem("user");
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("user");
+
+      const pathname = window.location.pathname;
+      const isAuthPage =
+        pathname === "/login" ||
+        pathname === "/signin" ||
+        pathname === "/register" ||
+        pathname === "/signup";
+
+      if (!isAuthPage) {
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   }

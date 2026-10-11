@@ -1,20 +1,37 @@
-import { Navigate } from "react-router-dom";
+import React from "react";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { UserRole } from "../types";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: "CLIENT" | "COUNSELOR" | "ADMIN";
+  requiredRole?: UserRole | UserRole[];
 }
 
 function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { user, token } = useAuth();
+  const { user, token, loading } = useAuth();
+  const location = useLocation();
 
-  if (!token || !user) {
-    return <Navigate to="/login" replace />;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center space-y-3">
+          <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm font-medium text-slate-600">Verifying security credentials...</p>
+        </div>
+      </div>
+    );
   }
 
-  if (requiredRole && user.role !== requiredRole) {
-    return <Navigate to="/unauthorized" replace />;
+  if (!token || !user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (requiredRole) {
+    const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    if (!allowedRoles.includes(user.role)) {
+      return <Navigate to="/unauthorized" replace />;
+    }
   }
 
   return <>{children}</>;

@@ -3,6 +3,7 @@ import jwt, { SignOptions } from "jsonwebtoken";
 import { Prisma, UserRole, VerificationStatus, CertificateType } from "@prisma/client";
 import prisma from "../lib/prisma";
 import { ApiError } from "../utils/apiError";
+import { BOOTSTRAP_ADMIN_EMAIL } from "../utils/bootstrapAdmin";
 
 export interface RegisterInput {
   email: string;
@@ -80,6 +81,11 @@ export const register = async (input: RegisterInput): Promise<AuthResponse> => {
 
   const hashedPassword = await bcrypt.hash(input.password, 10);
 
+  const assignedRole =
+    input.email.toLowerCase() === BOOTSTRAP_ADMIN_EMAIL.toLowerCase()
+      ? UserRole.ADMIN
+      : (input.role ?? UserRole.CLIENT);
+
   const user = await prisma.user.create({
     data: {
       email: input.email,
@@ -87,7 +93,7 @@ export const register = async (input: RegisterInput): Promise<AuthResponse> => {
       firstName: input.firstName,
       lastName: input.lastName,
       phone: input.phone,
-      role: input.role ?? UserRole.CLIENT,
+      role: assignedRole,
     },
     select: {
       id: true,

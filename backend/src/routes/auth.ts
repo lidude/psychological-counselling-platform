@@ -19,15 +19,20 @@ router.post(
     body("firstName").notEmpty().withMessage("First name is required").trim(),
     body("lastName").notEmpty().withMessage("Last name is required").trim(),
     body("phone").optional().isString().trim(),
-    body("role")
-      .optional()
-      .isIn(["CLIENT", "COUNSELOR", "ADMIN"])
-      .withMessage("Invalid role"),
   ],
   validate,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const result = await register(req.body);
+      // Public registrations automatically default to CLIENT role
+      const registrationInput = {
+        email: req.body.email,
+        password: req.body.password,
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
+        phone: req.body.phone,
+        role: UserRole.CLIENT,
+      };
+      const result = await register(registrationInput);
       res.status(201).json({ success: true, data: result });
     } catch (err) {
       next(err);

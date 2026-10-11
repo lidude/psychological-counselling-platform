@@ -1,8 +1,17 @@
 import bcrypt from "bcrypt";
 import { UserRole } from "@prisma/client";
 import prisma from "../src/lib/prisma";
+import { bootstrapAdmin, BOOTSTRAP_ADMIN_EMAIL } from "../src/utils/bootstrapAdmin";
 
 const SEED_USERS = [
+  {
+    email: BOOTSTRAP_ADMIN_EMAIL,
+    password: "Password123",
+    firstName: "Salma",
+    lastName: "Mustefa",
+    phone: "+251911000000",
+    role: UserRole.ADMIN,
+  },
   {
     email: "admin@gmail.com",
     password: "Password123",
@@ -43,7 +52,10 @@ const seed = async () => {
 
     const user = await prisma.user.upsert({
       where: { email: userData.email },
-      update: { password: hashedPassword },
+      update: {
+        password: hashedPassword,
+        role: userData.role,
+      },
       create: {
         email: userData.email,
         password: hashedPassword,
@@ -54,10 +66,13 @@ const seed = async () => {
       },
     });
 
-    console.log(`Seeded: ${user.email} (${user.role})`);
+    console.log(`Seeded user: ${user.email} (${user.role})`);
   }
 
-  console.log("Seed completed successfully.");
+  // Ensure bootstrap admin rule enforcement
+  await bootstrapAdmin();
+
+  console.log("Database seed completed successfully.");
 };
 
 seed()

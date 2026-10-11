@@ -9,7 +9,11 @@ import {
   getUsersByRole,
   getUserById,
   updateUser,
+  changeUserRole,
   deleteUser,
+  getSystemAnalytics,
+  getSystemConfig,
+  updateSystemConfig,
   getCounselorProfiles,
   getCounselorProfileById,
   verifyCounselorProfile,
@@ -17,19 +21,57 @@ import {
 
 const router = Router();
 
+// Strict RBAC: All admin endpoints require valid JWT and ADMIN role
 router.use(authMiddleware, requireRole(UserRole.ADMIN));
 
+/**
+ * System analytics overview
+ */
+router.get("/analytics", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const analytics = await getSystemAnalytics();
+    res.json({ success: true, data: analytics });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Platform configurations
+ */
+router.get("/config", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const config = await getSystemConfig();
+    res.json({ success: true, data: config });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put("/config", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const updatedConfig = await updateSystemConfig(req.body);
+    res.json({ success: true, data: updatedConfig });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * View users (can filter by CLIENT, COUNSELOR, ADMIN or view all)
+ */
 router.get(
   "/users",
   [
     query("role")
-      .isIn(["CLIENT", "COUNSELOR"])
-      .withMessage("Role must be CLIENT or COUNSELOR"),
+      .optional()
+      .isIn(["CLIENT", "COUNSELOR", "ADMIN"])
+      .withMessage("Role must be CLIENT, COUNSELOR, or ADMIN"),
   ],
   validate,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const role = req.query.role as UserRole;
+      const role = req.query.role as UserRole | undefined;
       const users = await getUsersByRole(role);
       res.json({ success: true, data: users });
     } catch (err) {
@@ -64,8 +106,8 @@ router.post(
     body("lastName").notEmpty().withMessage("Last name is required").trim(),
     body("phone").optional().isString().trim(),
     body("role")
-      .isIn(["CLIENT", "COUNSELOR"])
-      .withMessage("Role must be CLIENT or COUNSELOR"),
+      .isIn(["CLIENT", "COUNSELOR", "ADMIN"])
+      .withMessage("Role must be CLIENT, COUNSELOR, or ADMIN"),
   ],
   validate,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -90,6 +132,10 @@ router.put(
       .optional()
       .isLength({ min: 8 })
       .withMessage("Password must be at least 8 characters"),
+    body("role")
+      .optional()
+      .isIn(["CLIENT", "COUNSELOR", "ADMIN"])
+      .withMessage("Role must be CLIENT, COUNSELOR, or ADMIN"),
   ],
   validate,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -97,6 +143,34 @@ router.put(
       const id = parseInt(req.params.id, 10);
       const user = await updateUser(id, req.body);
       res.json({ success: true, data: user });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * Dedicated endpoint to assign/change user roles (Admin, Counselor, Client)
+ */
+router.patch(
+  "/users/:id/role",
+  [
+    param("id").isInt({ min: 1 }).withMessage("Valid user ID is required"),
+    body("role")
+      .isIn(["CLIENT", "COUNSELOR", "ADMIN"])
+      .withMessage("Role must be CLIENT, COUNSELOR, or ADMIN"),
+  ],
+  validate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const { role } = req.body;
+      const user = await changeUserRole(id, role as UserRole);
+      res.json({
+        success: true,
+        message: `User role successfully updated to ${role}`,
+        data: user,
+      });
     } catch (err) {
       next(err);
     }
