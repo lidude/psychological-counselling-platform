@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import { bootstrapAdmin } from "../utils/bootstrapAdmin";
 import prisma from "../lib/prisma";
 
