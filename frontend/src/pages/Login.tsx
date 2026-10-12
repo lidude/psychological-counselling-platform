@@ -11,7 +11,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
-  const [socialModalMessage, setSocialModalMessage] = useState<string | null>(null);
 
   // If already authenticated, redirect to the authorized portal based on role
   if (token && user) {
@@ -86,12 +85,6 @@ export default function Login() {
     }
   };
 
-  const handleSocialAuth = (provider: "Google" | "Telebirr") => {
-    setSocialModalMessage(
-      `${provider} Single Sign-On: The system automatically retrieves your profile and determines role-based permissions from the backend identity provider.`
-    );
-  };
-
   const displayError = formError || error;
 
   return (
@@ -125,14 +118,6 @@ export default function Login() {
           </div>
         </Link>
 
-        {/* Academic Project Defense Badge */}
-        <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-100/70 text-teal-800 text-xs font-medium border border-teal-200/60 shadow-sm">
-          <svg className="w-3.5 h-3.5 text-teal-600" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a10.974 10.974 0 01-1.2 5.094c-.21.439-.06.97.351 1.229.41.258.949.13 1.189-.297a8.974 8.974 0 001.077-4.148l3.333 1.428v4.544a1 1 0 00.553.894l2 1a1 1 0 001.447-.894v-4.544l3.333-1.428a8.974 8.974 0 001.077 4.148c.24.427.779.555 1.189.297.411-.259.561-.79.351-1.229a10.974 10.974 0 01-1.2-5.094l2.644-1.131a1 1 0 000-1.84l-7-3zM10 4.162l5.622 2.41L10 8.981 4.378 6.572 10 4.162z" />
-          </svg>
-          <span>Dire Dawa University &bull; Final Project Defense</span>
-        </div>
-
         <h1 className="mt-4 text-2xl font-extrabold text-slate-900 tracking-tight sm:text-3xl">
           Sign in to your account
         </h1>
@@ -144,19 +129,6 @@ export default function Login() {
       {/* Main Card */}
       <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md px-4">
         <div className="bg-white py-8 px-5 sm:px-10 shadow-xl shadow-slate-200/60 rounded-3xl border border-slate-100">
-          {/* Social info modal message */}
-          {socialModalMessage && (
-            <div className="mb-5 p-3.5 rounded-2xl bg-sky-50 border border-sky-200 text-sky-900 text-xs relative flex justify-between items-start">
-              <span>{socialModalMessage}</span>
-              <button
-                type="button"
-                onClick={() => setSocialModalMessage(null)}
-                className="text-sky-600 font-bold ml-2 text-sm"
-              >
-                &times;
-              </button>
-            </div>
-          )}
 
           {/* Error Banner */}
           {displayError && (
@@ -303,61 +275,6 @@ export default function Login() {
               )}
             </button>
           </form>
-
-          {/* Alternative Authentication Buttons: Google & Telebirr */}
-          <div className="mt-7">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-3 text-slate-500 font-semibold tracking-wider">
-                  Or continue with
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              {/* Google Button */}
-              <button
-                type="button"
-                onClick={() => handleSocialAuth("Google")}
-                className="w-full inline-flex justify-center items-center py-2.5 px-4 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all group"
-              >
-                <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                  />
-                </svg>
-                <span>Google</span>
-              </button>
-
-              {/* Telebirr Button */}
-              <button
-                type="button"
-                onClick={() => handleSocialAuth("Telebirr")}
-                className="w-full inline-flex justify-center items-center py-2.5 px-4 border border-[#0072ce]/30 rounded-xl bg-gradient-to-r from-[#0072ce]/5 to-[#ffcc00]/10 text-xs font-semibold text-[#005bb5] hover:bg-[#0072ce]/15 shadow-sm transition-all group"
-              >
-                <div className="w-4 h-4 mr-2 rounded-full bg-[#0072ce] flex items-center justify-center text-white text-[9px] font-black">
-                  t
-                </div>
-                <span>Telebirr</span>
-              </button>
-            </div>
-          </div>
 
           {/* Discreet Defense Quick-Fill Panel */}
           <div className="mt-6 pt-4 border-t border-slate-100">

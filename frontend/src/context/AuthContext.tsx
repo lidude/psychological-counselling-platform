@@ -83,13 +83,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return userData;
     } catch (err: unknown) {
       const axiosError = err as {
-        response?: { data?: { message?: string; error?: string; errors?: Array<{ msg?: string }> } };
+        response?: { status?: number; data?: { message?: string; error?: string; errors?: Array<{ msg?: string }> } };
       };
-      const message =
+      let rawError =
         axiosError.response?.data?.message ||
         axiosError.response?.data?.errors?.[0]?.msg ||
-        axiosError.response?.data?.error ||
-        "Invalid email or password. Please verify your credentials.";
+        axiosError.response?.data?.error;
+
+      let message = "Invalid email or password. Please verify your credentials.";
+      if (typeof rawError === "string" && (rawError.includes("database server") || rawError.includes("localhost:3306"))) {
+        message = "Cannot reach the database server. Please ensure MySQL is running on localhost:3306.";
+      } else if (!axiosError.response) {
+        message = "Cannot connect to the backend server. Please ensure the backend API is running.";
+      } else if (rawError) {
+        message = rawError;
+      }
+
       setError(message);
       throw new Error(message);
     } finally {
@@ -107,13 +116,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return userData;
     } catch (err: unknown) {
       const axiosError = err as {
-        response?: { data?: { message?: string; error?: string; errors?: Array<{ msg?: string }> } };
+        response?: { status?: number; data?: { message?: string; error?: string; errors?: Array<{ msg?: string }> } };
       };
-      const message =
+      let rawError =
         axiosError.response?.data?.message ||
         axiosError.response?.data?.errors?.[0]?.msg ||
-        axiosError.response?.data?.error ||
-        "Failed to register account. Please check your information.";
+        axiosError.response?.data?.error;
+
+      let message = "Failed to register account. Please check your information.";
+      if (typeof rawError === "string" && (rawError.includes("database server") || rawError.includes("localhost:3306"))) {
+        message = "Cannot reach the database server. Please ensure MySQL is running on localhost:3306.";
+      } else if (!axiosError.response) {
+        message = "Cannot connect to the backend server. Please ensure the backend API is running.";
+      } else if (rawError) {
+        message = rawError;
+      }
+
       setError(message);
       throw new Error(message);
     } finally {
